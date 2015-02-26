@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension
+         point="org.eclipse.ui.views">
+      <category
+            name="AST Category"
+            id="org.eclipse.myphp">
+      </category>
+      <view
+            name="MyAST View"
+            icon="icons/nuke.gif"
+            category="org.eclipse.myphp"
+            class="org.eclipse.alvor.php.views.MyASTView"
+            id="org.eclipse.myphp.views.MyASTView">
+      </view>
+   </extension>
+   <extension
+         point="org.eclipse.ui.perspectiveExtensions">
+      <perspectiveExtension
+            targetID="org.eclipse.jdt.ui.JavaPerspective">
+         <view
+               ratio="0.5"
+               relative="org.eclipse.ui.views.ProblemView"
+               relationship="right"
+               id="org.eclipse.myphp.views.ASTView">
+         </view>
+      </perspectiveExtension>
+   </extension>
+   <extension
+         point="org.eclipse.help.contexts">
+      <contexts
+            file="contexts.xml">
+      </contexts>
+   </extension>
+   
+   <extension point="org.eclipse.ui.commands">
+ 	<command name="Show Invocations"
+ 			description="Shows Function Invocations"
+ 			id="org.eclipse.myphp.command.invocation"/>
+	</extension>
+	
+	<extension point="org.eclipse.ui.handlers">
+ 		<handler class= "org.eclipse.alvor.php.handlers.InvocationHandler" commandId="org.eclipse.myphp.command.invocation"/>
+	 		<enabledWhen>
+			 	<reference definitionId="when.myphp.is.active"/>
+			</enabledWhen>
+	</extension>
+   
+   <extension point="org.eclipse.ui.menus">
+	 <menuContribution allPopups="false" locationURI="menu:help?after=additions">
+	 	<command
+	         commandId="org.eclipse.myphp.command.invocation"
+	         icon="icons/nuke.gif"
+	         label="Show Invocations"
+	         style="push">
+         <visibleWhen>
+         	<reference definitionId="when.myphp.is.active"/>
+         </visibleWhen>
+	 	</command>
+	 </menuContribution>
+	</extension>
+	
+	<extension point="org.eclipse.core.expressions.definitions">
+	 <definition id="when.myphp.is.active">
+		 <with variable="activeContexts">
+			 <iterate operator="or">
+			 	<equals value="org.eclipse.php.ui.phpEditorScope"/>
+			 </iterate>
+		 </with>
+	 </definition>
+	</extension>
+	
+	<extension point="org.eclipse.ui.preferencePages">
+		<page 
+			name="MyPhp"
+			class="org.eclipse.alvor.php.AlvorPhpPreferencePage"
+			id="org.eclipse.myphp.preference.page"/>
+	</extension>
+	
+</plugin>
