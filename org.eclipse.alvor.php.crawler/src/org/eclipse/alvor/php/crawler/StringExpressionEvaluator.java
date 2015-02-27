@@ -1,12 +1,15 @@
 package org.eclipse.alvor.php.crawler;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 import org.eclipse.php.internal.core.ast.nodes.ASTNode;
+import org.eclipse.php.internal.core.ast.nodes.Assignment;
 import org.eclipse.php.internal.core.ast.nodes.Expression;
 import org.eclipse.php.internal.core.ast.nodes.FunctionInvocation;
 import org.eclipse.php.internal.core.ast.nodes.Identifier;
+import org.eclipse.php.internal.core.ast.nodes.Program;
 import org.eclipse.php.internal.core.ast.nodes.Scalar;
 import org.eclipse.php.internal.core.ast.nodes.Variable;
 
@@ -17,6 +20,7 @@ import com.googlecode.alvor.common.UnsupportedStringOpEx;
 import com.googlecode.alvor.string.IAbstractString;
 import com.googlecode.alvor.string.Position;
 import com.googlecode.alvor.string.StringConstant;
+import com.googlecode.alvor.string.StringSequence;
 
 @SuppressWarnings("restriction")
 public class StringExpressionEvaluator {
@@ -75,7 +79,7 @@ public class StringExpressionEvaluator {
 	}
 	
 	/**
-	 * Just for testing to collect all variable occurrences
+	 * Just for testing to collect all variable occurrences and create a StringSequence object out of them
 	 * @param var
 	 * @param pos
 	 * @return
@@ -88,13 +92,22 @@ public class StringExpressionEvaluator {
 		root.accept(varOccFinder);
 		
 		Collection<Variable> varOccurences = varOccFinder.getOccurences();
+		List<IAbstractString> options = new ArrayList<IAbstractString>();
+		
 		for(Variable v: varOccurences)
 		{
-			System.out.println("Variable occurence "
-					+ ((Identifier) (v).getName()).getName() + " "
-					+ pos.getPath() + "(" + v.getStart() + ")");
+			Assignment assign = (Assignment)v.getParent();
+			Expression assignedValue = assign.getRightHandSide();
+			if(assignedValue instanceof Scalar)
+			{
+				//not sure if it should be the position of the occurence or the final hotspot?
+				Position varPos = new Position(pos.getPath(), v.getStart(), v.getLength());
+				options.add(new StringConstant(varPos, ((Scalar)assignedValue).getStringValue(), null));
+			}
+			else
+				throw new UnsupportedStringOpEx("Only the assignment of strings to variable values allowed at the moment!", pos);
 		}
 		
-		throw new UnsupportedStringOpEx("Variables not supported yet!", pos);
+		return new StringSequence(pos, options);
 	}
 }
