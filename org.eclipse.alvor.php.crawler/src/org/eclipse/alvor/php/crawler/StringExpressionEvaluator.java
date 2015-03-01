@@ -1,14 +1,12 @@
 package org.eclipse.alvor.php.crawler;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import org.eclipse.php.internal.core.ast.nodes.ASTNode;
 import org.eclipse.php.internal.core.ast.nodes.Assignment;
 import org.eclipse.php.internal.core.ast.nodes.Expression;
 import org.eclipse.php.internal.core.ast.nodes.FunctionInvocation;
-import org.eclipse.php.internal.core.ast.nodes.Identifier;
 import org.eclipse.php.internal.core.ast.nodes.Program;
 import org.eclipse.php.internal.core.ast.nodes.Scalar;
 import org.eclipse.php.internal.core.ast.nodes.Variable;
@@ -54,14 +52,29 @@ public class StringExpressionEvaluator {
 		}
 	}
 	
+	/**
+	 * Evaluate the result of a db-query call
+	 * @param inv
+	 * @param pos
+	 * @return
+	 * @throws UnsupportedStringOpEx
+	 */
 	private IAbstractString evalInvocationResult(FunctionInvocation inv, Position pos) throws UnsupportedStringOpEx
 	{
 		List<Expression> params = inv.parameters();
 		Expression param = params.get(0);
 		
 		if (param instanceof Scalar && ((Scalar) param).getScalarType() == Scalar.TYPE_STRING) {
-			//in case of a scalar string value, return StringConstant
-			return new StringConstant(pos, ((Scalar)param).getStringValue(), null);
+			if(param.getEnclosingBodyNode() instanceof Program)
+			{
+				//in case of a scalar string value, return StringConstant
+				return new StringConstant(pos, ((Scalar)param).getStringValue(), null);
+			}
+			else
+			{
+				throw new UnsupportedStringOpEx("Collecting only the root level assignments!", pos);
+			}
+			
 		}
 		else if(param instanceof Variable)
 		{
@@ -91,16 +104,24 @@ public class StringExpressionEvaluator {
 		VariableOccurencesFinder varOccFinder = new VariableOccurencesFinder(var);
 		root.accept(varOccFinder);
 		
-		Collection<Variable> varOccurences = varOccFinder.getOccurences();
+		List<Variable> varOccurences = varOccFinder.getOccurences();
 		List<IAbstractString> options = new ArrayList<IAbstractString>();
 		
 		for(Variable v: varOccurences)
 		{
 			Assignment assign = (Assignment)v.getParent();
+			int operator = assign.getOperator();
+			
+			//not sure if we need to check the operators here or not???
+			if((operator != Assignment.OP_EQUAL) && (operator != Assignment.OP_CONCAT_EQUAL))
+			{
+				throw new UnsupportedStringOpEx("Unknown assignment operator: " + assign.getOperationString(), pos);
+			}
+				
 			Expression assignedValue = assign.getRightHandSide();
 			if(assignedValue instanceof Scalar)
 			{
-				//not sure if it should be the position of the occurence or the final hotspot?
+				//not sure if it should be the position of the occurence or the final hotspot???
 				Position varPos = new Position(pos.getPath(), v.getStart(), v.getLength());
 				options.add(new StringConstant(varPos, ((Scalar)assignedValue).getStringValue(), null));
 			}
@@ -110,4 +131,5 @@ public class StringExpressionEvaluator {
 		
 		return new StringSequence(pos, options);
 	}
+	
 }
