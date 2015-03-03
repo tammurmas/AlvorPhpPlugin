@@ -44,7 +44,7 @@ public class StringExpressionEvaluator {
 	}
 	
 	/**
-	 * Evaluates the provided ASTNode to extract IAbstractStrings
+	 * Evaluates recursively the ASTNode and extracts the needed IAbstractStrings
 	 * @param node
 	 * @param pos
 	 * @return
@@ -52,9 +52,23 @@ public class StringExpressionEvaluator {
 	 */
 	private IAbstractString eval(ASTNode node, Position pos) throws UnsupportedStringOpEx
 	{
+		//evaluate the result of a db-query call
 		if(node instanceof FunctionInvocation)
 		{
-			return evalInvocationResult((FunctionInvocation)node, pos);
+			FunctionInvocation inv = (FunctionInvocation)node;
+			List<Expression> params = inv.parameters();
+			Expression param = params.get(0);
+			
+			//discard function calls, eval all the rest
+			if(param instanceof FunctionInvocation)
+			{
+				throw new UnsupportedStringOpEx("Function invocations as parameters not supported yet!", pos);
+			}
+			else
+			{
+				return eval(param,pos);
+			}
+				
 		}
 		else if(node instanceof Variable)
 		{
@@ -75,46 +89,7 @@ public class StringExpressionEvaluator {
 	}
 	
 	/**
-	 * Evaluate the result of a db-query call
-	 * @param inv
-	 * @param pos
-	 * @return
-	 * @throws UnsupportedStringOpEx
-	 */
-	private IAbstractString evalInvocationResult(FunctionInvocation inv, Position pos) throws UnsupportedStringOpEx
-	{
-		List<Expression> params = inv.parameters();
-		Expression param = params.get(0);
-		
-		if (param instanceof Scalar && ((Scalar) param).getScalarType() == Scalar.TYPE_STRING) {
-			if(param.getEnclosingBodyNode() instanceof Program)
-			{
-				//in case of a scalar string value, return StringConstant
-				return new StringConstant(pos, ((Scalar)param).getStringValue(), null);
-			}
-			else
-			{
-				throw new UnsupportedStringOpEx("Collecting only the root level assignments!", pos);
-			}
-			
-		}
-		else if(param instanceof Variable)
-		{
-			//goes back to eval function
-			return eval(param, pos);
-		}
-		else if(param instanceof FunctionInvocation)
-		{
-			throw new UnsupportedStringOpEx("Function invocations as parameters not supported yet!", pos);
-		}
-		else
-		{
-			throw new UnsupportedStringOpEx("Parameter has to be a query object!", pos);
-		}
-	}
-	
-	/**
-	 * Just for testing to collect all variable occurrences and create a StringSequence object out of them
+	 * Collects all variable occurrences preceding the db-query call in the code and creates a StringSequence object out of them
 	 * @param var
 	 * @param pos
 	 * @return
@@ -161,12 +136,13 @@ public class StringExpressionEvaluator {
 	
 	/**
 	 * Evaluates the given infix expression
+	 * e.g "$foo.$bar.$baz"
 	 * @param expr
 	 * @return StringSequence from the parts of the InfixExpression
 	 */
 	private IAbstractString evalInfixExpression(InfixExpression expr, Position pos)
 	{
-		//right now we only allow the concatenation of strings, everything else gets discarded
+		//right now we only allow the concatenation of strings and variables, everything else gets discarded
 		int operator = expr.getOperator();
 		if(operator == InfixExpression.OP_CONCAT)
 		{
@@ -175,26 +151,26 @@ public class StringExpressionEvaluator {
 			Expression left = expr.getLeft();
 			Expression right = expr.getRight();
 			
-			if(left instanceof InfixExpression || left instanceof Scalar)
+			if(left instanceof InfixExpression || left instanceof Scalar || left instanceof Variable)
 			{
 				ops.add(eval(left, pos));
 			}
 			else
 			{
 				throw new UnsupportedStringOpEx(
-						"Unsupported expression inside infix expression!",
+						"Unsupported expression inside left infix expression!",
 						new Position(pos.getPath(), left.getStart(),
 								left.getEnd()));
 			}
 			
-			if(right instanceof InfixExpression || right instanceof Scalar)
+			if(right instanceof InfixExpression || right instanceof Scalar || right instanceof Variable)
 			{
 				ops.add(eval(right, pos));
 			}
 			else
 			{
 				throw new UnsupportedStringOpEx(
-						"Unsupported expression inside infix expression!",
+						"Unsupported expression inside right infix expression!",
 						new Position(pos.getPath(), right.getStart(),
 								right.getEnd()));
 			}

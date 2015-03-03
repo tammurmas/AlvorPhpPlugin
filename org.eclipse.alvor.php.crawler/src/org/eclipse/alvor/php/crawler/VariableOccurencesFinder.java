@@ -26,7 +26,7 @@ public class VariableOccurencesFinder extends AbstractVisitor{
 		String variableName = ((Identifier)(variable).getName()).getName();
 		String varName = ((Identifier)(var).getName()).getName();
 		
-		//right now we only collect variables from simple assignments on the top level
+		//right now we only collect variables from simple assignments on the program's root level
 		if (variableName.equals(varName)
 				&& variable.getStart() < var.getStart()
 				&& variable.getParent() instanceof Assignment
