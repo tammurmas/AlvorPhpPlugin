@@ -103,6 +103,7 @@ public class StringExpressionEvaluator {
 		
 		List<Variable> varOccurences = varOccFinder.getOccurences();
 		List<IAbstractString> options = new ArrayList<IAbstractString>();
+		List<IAbstractString> prevOptions = new ArrayList<IAbstractString>();
 		
 		for(Variable v: varOccurences)
 		{
@@ -114,7 +115,14 @@ public class StringExpressionEvaluator {
 			{
 				throw new UnsupportedStringOpEx("Unknown assignment operator: \"" + assign.getOperationString()+"\"", pos);
 			}
-				
+			
+			//overwrite the collected values with a new assignment
+			if((operator == Assignment.OP_EQUAL))
+			{
+				prevOptions.addAll(options);
+				options = new ArrayList<IAbstractString>();
+			}
+			
 			Expression assignedValue = assign.getRightHandSide();
 			Position varPos = new Position(pos.getPath(), v.getStart(), v.getLength());
 			
@@ -126,6 +134,25 @@ public class StringExpressionEvaluator {
 			else if(assignedValue instanceof InfixExpression)
 			{
 				options.add(eval(assignedValue, varPos));
+			}
+			else if(assignedValue instanceof Variable)
+			{
+				//we have the following situation: "$foo = $foo" 
+				if(var.getName().equals(((Variable) assignedValue).getName()))
+				{
+					if(options.size() > 0)
+					{
+						options.addAll(options);
+					}
+					else if(options.size() == 0 && prevOptions.size() > 0)
+					{
+						options.addAll(prevOptions);
+					}
+				}
+				else
+				{
+					options.add(evalVariable((Variable)assignedValue, varPos));
+				}
 			}
 			else
 				throw new UnsupportedStringOpEx("Only the assignment of strings and the results of infix operations allowed!", pos);

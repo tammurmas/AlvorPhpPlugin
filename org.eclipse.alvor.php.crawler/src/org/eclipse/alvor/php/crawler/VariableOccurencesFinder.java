@@ -3,7 +3,9 @@ package org.eclipse.alvor.php.crawler;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.php.internal.core.ast.nodes.ASTNode;
 import org.eclipse.php.internal.core.ast.nodes.Assignment;
+import org.eclipse.php.internal.core.ast.nodes.Expression;
 import org.eclipse.php.internal.core.ast.nodes.Identifier;
 import org.eclipse.php.internal.core.ast.nodes.Program;
 import org.eclipse.php.internal.core.ast.nodes.Variable;
@@ -23,18 +25,21 @@ public class VariableOccurencesFinder extends AbstractVisitor{
 	
 	public boolean visit(Variable variable)
 	{
-		String variableName = ((Identifier)(variable).getName()).getName();
-		String varName = ((Identifier)(var).getName()).getName();
+		Expression variableName = variable.getName();
+		Expression varName = var.getName();
 		
-		//right now we only collect variables from simple assignments on the program's root level
-		if (variableName.equals(varName)
-				&& variable.getStart() < var.getStart()
-				&& variable.getParent() instanceof Assignment
-				&& variable.getEnclosingBodyNode() instanceof Program)
+		if (variableName.getType() == ASTNode.IDENTIFIER && variable.isDollared())
 		{
-			occurences.add(variable);
+			//right now we only collect variables from simple assignments on the program's root level
+			if (((Identifier) variableName).getName().equals(((Identifier)varName).getName())
+					&& variable.getStart() < var.getStart()
+					&& variable.getParent() instanceof Assignment
+					&& variable.getEnclosingBodyNode() instanceof Program)
+			{
+				occurences.add(variable);
+			}
 		}
-			
+		
 		return true;
 	}
 	
