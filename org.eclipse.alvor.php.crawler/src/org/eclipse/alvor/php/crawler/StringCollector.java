@@ -19,13 +19,11 @@ public class StringCollector {
 
 	private String funcName;
 	private Program ast;
-	private String fileName;
 	
-	public StringCollector(String funcName, Program ast, String fileName)
+	public StringCollector(String funcName, Program ast)
 	{
 		this.funcName = funcName;
 		this.ast = ast;
-		this.fileName = fileName;
 	}
 	
 	/*
@@ -43,8 +41,8 @@ public class StringCollector {
 					Expression expr = functionName.getName();
 
 					if (expr instanceof NamespaceName && ((NamespaceName) expr).getName().equals(funcName)) {
-						Position pos = new Position(fileName, functionInvocation.getStart(), functionInvocation.getLength());
-						hotspots.add(evaluator.evaluate(functionInvocation,pos));
+						Expression arg = (Expression)(functionInvocation.parameters().get(0));//TODO: check if there are no parameters
+						hotspots.add(evaluator.evaluate(arg));
 					}
 					return true;
 				}

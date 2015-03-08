@@ -31,15 +31,16 @@ public class InvocationHandler extends AbstractHandler {
 	
 	private final ISourceModule sourceModule = EditorUtility
 			.getPhpInput(EditorUtility.getActiveEditor());
+	
+	
 
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {
-		System.out
-				.println(".......................Handler invocation...........");
-
+		System.out.println(".....Handler invocation...........");
+		
 		try {
 			StringCollector collector = new StringCollector(funcName, ASTParser
-					.newParser(sourceModule).createAST(null), fileName);
+					.newParser(sourceModule).createAST(null));
 
 			collector.performSearch();
 			Collection<HotspotDescriptor> hotspots = collector.getHotspots();
@@ -52,8 +53,7 @@ public class InvocationHandler extends AbstractHandler {
 			e.printStackTrace();
 		}
 
-		System.out
-				.println(".......................End of handler invocation.....");
+		System.out.println("......End of handler invocation.....");
 
 		return null;
 	}

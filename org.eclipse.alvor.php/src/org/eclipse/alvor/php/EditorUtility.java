@@ -1,13 +1,11 @@
 package org.eclipse.alvor.php;
 
-import org.eclipse.core.resources.IFile;
 import org.eclipse.dltk.core.ISourceModule;
 import org.eclipse.dltk.ui.DLTKUIPlugin;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
-import org.eclipse.ui.PlatformUI;
 
 public class EditorUtility {
 	private EditorUtility() {
