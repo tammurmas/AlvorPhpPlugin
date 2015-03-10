@@ -6,11 +6,9 @@ import org.eclipse.alvor.php.util.UnsupportedStringOpExAtNode;
 import org.eclipse.php.internal.core.ast.nodes.ASTNode;
 import org.eclipse.php.internal.core.ast.nodes.Assignment;
 import org.eclipse.php.internal.core.ast.nodes.Block;
-import org.eclipse.php.internal.core.ast.nodes.Expression;
 import org.eclipse.php.internal.core.ast.nodes.ExpressionStatement;
 import org.eclipse.php.internal.core.ast.nodes.FunctionInvocation;
 import org.eclipse.php.internal.core.ast.nodes.IVariableBinding;
-import org.eclipse.php.internal.core.ast.nodes.Scalar;
 import org.eclipse.php.internal.core.ast.nodes.Statement;
 import org.eclipse.php.internal.core.ast.nodes.Variable;
 
@@ -63,12 +61,14 @@ public class VariableTracker {
 			return getLastReachingModInBlock(var, target, (Block)scope);
 		}
 		else if (scope instanceof Assignment) {
-	    	return getLastReachingModInVDeclStmt(var, target, (Assignment)scope);
+			//return getLastReachingModInVDeclStmt(var, target, (Assignment)scope);
+			return getLastReachingModInAss(var, target, (Assignment)scope);
+	    	
 	    }
-		// a special case of an unassigned variable
-		else if (scope instanceof Variable) {
+		else if(scope instanceof Variable)
+		{
 			throw new UnsupportedStringOpExAtNode("getLastReachingModIn " + scope.getClass(), scope);
-	    }
+		}
 		else
 		{
 			throw new UnsupportedStringOpExAtNode("getLastReachingModIn " + scope.getClass(), scope);
@@ -129,25 +129,16 @@ public class VariableTracker {
 		return null;
 	}
 	
-	/**
-	 * Check whether the left-side of the assignment(Variable) has the same binding as the right-side of the assignment(Expression)
-	 * @param var
-	 * @param target
-	 * @param vDeclStmt
-	 * @return
-	 */
-	private static NameUsage getLastReachingModInVDeclStmt(IVariableBinding var, 
-			ASTNode target, Assignment vDeclStmt) {
+	private static NameUsage getLastReachingModInAss(IVariableBinding var, 
+			ASTNode target, Assignment ass) {
 		
-		if(ASTUtil.sameBinding((Expression)vDeclStmt.getLeftHandSide(), var))
-		{
-			return new NameAssignment(vDeclStmt);
+		if (target == null && ASTUtil.sameBinding(ass.getLeftHandSide(), var)) {
+			return new NameAssignment(ass);
 		}
-		else
-		{
-			return  getLastModIn(var, (Expression)vDeclStmt.getRightHandSide());
-		}
-			
+		
+		return null; 
 	}
+	
+	
 
 }

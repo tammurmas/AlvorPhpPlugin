@@ -46,8 +46,20 @@ public class ASTUtil {
 	 * @param var
 	 * @return
 	 */
+	/*public static boolean sameBinding(Expression exp, IBinding var) {
+		return (exp instanceof Variable) && ((Variable)exp).resolveVariableBinding().equals(var);
+	}*/
+	
 	public static boolean sameBinding(Expression exp, IBinding var) {
-		return (exp instanceof Variable)
-			&& ((Variable)exp).resolveVariableBinding().equals(var);
+		if(exp instanceof Variable)
+		{
+			Variable v = (Variable)exp; 
+			//a dirty hack! we just compare the names of the variables if all else fails
+			return v.resolveVariableBinding().equals(var) || v.resolveVariableBinding().getName().equals(var.getName());
+		}
+		else
+		{
+			return false;
+		}
 	}
 }

@@ -18,7 +18,7 @@ public class NameAssignment extends NameUsage {
 		this.rightHandSide = assignment.getRightHandSide();
 	}
 	
-	//TODO: deal with unassigned variables
+	//TODO: A special case of an unassigned variable
 	
 	public ASTNode getAssignmentOrDeclaration() {
 		return assOrDecl;
