@@ -9,8 +9,12 @@ import org.eclipse.php.internal.core.ast.nodes.Block;
 import org.eclipse.php.internal.core.ast.nodes.ExpressionStatement;
 import org.eclipse.php.internal.core.ast.nodes.FunctionInvocation;
 import org.eclipse.php.internal.core.ast.nodes.IVariableBinding;
+import org.eclipse.php.internal.core.ast.nodes.InfixExpression;
 import org.eclipse.php.internal.core.ast.nodes.Statement;
 import org.eclipse.php.internal.core.ast.nodes.Variable;
+
+import com.googlecode.alvor.common.UnsupportedStringOpEx;
+import com.googlecode.alvor.string.IPosition;
 
 
 @SuppressWarnings("restriction")
@@ -23,6 +27,12 @@ public class VariableTracker {
 
 	public static NameUsage getLastReachingMod(IVariableBinding var, ASTNode target) {
 		assert target != null;
+		/*if(var == null)
+			throw new UnsupportedStringOpExAtNode("getLastReachingModIn " + target.getClass(), target);*/
+			
+		if (var != null && var.isField()) {
+			return getFieldDefinition(var);
+		}
 		
 		ASTNode parent = target.getParent();
 		NameUsage usage = getLastReachingModIn(var, target, parent);
@@ -65,9 +75,14 @@ public class VariableTracker {
 			return getLastReachingModInAss(var, target, (Assignment)scope);
 	    	
 	    }
+		else if(scope instanceof InfixExpression)
+		{
+			return getLastReachingModInInfix(var, target, (InfixExpression)scope);
+		}
 		else if(scope instanceof Variable)
 		{
-			throw new UnsupportedStringOpExAtNode("getLastReachingModIn " + scope.getClass(), scope);
+			//we've reached an empty variable declaration, carry on
+			return null;
 		}
 		else
 		{
@@ -83,10 +98,20 @@ public class VariableTracker {
 	 */
 	public static NameUsage getLastModIn(IVariableBinding var, ASTNode scope) {
 		if (var != null && var.isField()) {
-			//return getFieldDefinition(var);
+			return getFieldDefinition(var);
 			//TODO: handle the field parameters
 		}
 		return getLastReachingModIn(var, null, scope);
+	}
+	
+	/**
+	 * Check for a field definition
+	 * @param var
+	 * @return
+	 */
+	private static NameUsage getFieldDefinition(IVariableBinding var) {
+		// for now, (final)fields should be handled by client 
+		throw new UnsupportedStringOpEx("Fields are not supported in tracker", (IPosition)null);
 	}
 	
 	/**
@@ -103,6 +128,13 @@ public class VariableTracker {
 		return null;
 	}
 	
+	/**
+	 * Get last modaification of target inside a block statement
+	 * @param var
+	 * @param target
+	 * @param block
+	 * @return
+	 */
 	private static NameUsage getLastReachingModInBlock(IVariableBinding var,
 			ASTNode target, Block block) {
 		int stmtIdx; // last statement that can affect target
@@ -129,6 +161,13 @@ public class VariableTracker {
 		return null;
 	}
 	
+	/**
+	 * Get last modification inside an assignment
+	 * @param var
+	 * @param target
+	 * @param ass
+	 * @return
+	 */
 	private static NameUsage getLastReachingModInAss(IVariableBinding var, 
 			ASTNode target, Assignment ass) {
 		
@@ -139,6 +178,48 @@ public class VariableTracker {
 		return null; 
 	}
 	
+	/**
+	 * Track variable modifications inside an infix expression, i.e concatenation of strings
+	 * @param var
+	 * @param target
+	 * @param inf
+	 * @return
+	 */
+	private static NameUsage getLastReachingModInInfix(IVariableBinding var,
+			ASTNode target, InfixExpression inf) {
+		
+		//the right side is not an infix expression in PDT, so we have to search for its value from the level above
+		if(target != null && target.equals(inf.getRight()))
+		{
+			NameUsage usage = getLastModIn(var, inf);
+			if(usage != null)
+			{
+				return usage;
+			}
+		}
+		
+		//if the left-side is also an infix expression, then dig deeper into it 
+		if(target != null && target.equals(inf.getLeft()) && inf.getLeft() instanceof InfixExpression)
+		{
+			NameUsage usage = getLastModIn(var, target);
+			if(usage != null)
+			{
+				return usage;
+			}
+		}
+		
+		//if the left-hand side is not an infix expression anymore, then we can finally evaluate its value
+		if(target != null && target.equals(inf.getLeft()) && !(inf.getLeft() instanceof InfixExpression))
+		{
+			NameUsage usage = getLastModIn(var, inf);
+			if(usage != null)
+			{
+				return usage;
+			}
+		}
+		return null;
+		
+	}
 	
 
 }

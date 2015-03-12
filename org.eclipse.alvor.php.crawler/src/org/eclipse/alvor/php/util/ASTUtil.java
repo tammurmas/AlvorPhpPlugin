@@ -6,6 +6,7 @@ import org.eclipse.dltk.core.ModelException;
 import org.eclipse.php.internal.core.ast.nodes.ASTNode;
 import org.eclipse.php.internal.core.ast.nodes.Expression;
 import org.eclipse.php.internal.core.ast.nodes.IBinding;
+import org.eclipse.php.internal.core.ast.nodes.Identifier;
 import org.eclipse.php.internal.core.ast.nodes.Variable;
 
 import com.googlecode.alvor.common.PositionUtil;
@@ -40,16 +41,18 @@ public class ASTUtil {
 		}
 	}
 	
+	public static String getVariableName(Variable var)
+	{
+		Identifier id = (Identifier) var.getName();
+		return id.getName();
+	}
+	
 	/**
 	 * Check the bindings of an Expression object and a Variable binding 
 	 * @param exp
 	 * @param var
 	 * @return
 	 */
-	/*public static boolean sameBinding(Expression exp, IBinding var) {
-		return (exp instanceof Variable) && ((Variable)exp).resolveVariableBinding().equals(var);
-	}*/
-	
 	public static boolean sameBinding(Expression exp, IBinding var) {
 		if(exp instanceof Variable)
 		{

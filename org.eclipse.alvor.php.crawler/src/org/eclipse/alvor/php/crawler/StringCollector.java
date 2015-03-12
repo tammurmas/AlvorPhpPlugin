@@ -10,7 +10,6 @@ import org.eclipse.php.internal.core.ast.nodes.Program;
 import org.eclipse.php.internal.core.ast.visitor.AbstractVisitor;
 
 import com.googlecode.alvor.common.HotspotDescriptor;
-import com.googlecode.alvor.string.Position;
 
 @SuppressWarnings("restriction")
 public class StringCollector {

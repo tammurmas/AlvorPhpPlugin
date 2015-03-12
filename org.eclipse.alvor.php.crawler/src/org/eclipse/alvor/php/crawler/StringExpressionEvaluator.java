@@ -1,5 +1,8 @@
 package org.eclipse.alvor.php.crawler;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.eclipse.alvor.php.tracker.NameAssignment;
 import org.eclipse.alvor.php.tracker.NameUsage;
 import org.eclipse.alvor.php.tracker.VariableTracker;
@@ -9,8 +12,10 @@ import org.eclipse.php.internal.core.ast.nodes.ASTNode;
 import org.eclipse.php.internal.core.ast.nodes.Assignment;
 import org.eclipse.php.internal.core.ast.nodes.Expression;
 import org.eclipse.php.internal.core.ast.nodes.IVariableBinding;
+import org.eclipse.php.internal.core.ast.nodes.InfixExpression;
 import org.eclipse.php.internal.core.ast.nodes.Scalar;
 import org.eclipse.php.internal.core.ast.nodes.Variable;
+import org.eclipse.php.internal.core.ast.nodes.VariableBinding;
 
 import com.googlecode.alvor.common.HotspotDescriptor;
 import com.googlecode.alvor.common.StringHotspotDescriptor;
@@ -59,6 +64,10 @@ public class StringExpressionEvaluator {
 		{
 			return evalVariable((Variable)node);
 		}
+		else if (node instanceof InfixExpression)
+		{
+			return evalInfix((InfixExpression)node);
+		}
 		else
 		{
 			throw new UnsupportedStringOpExAtNode("getValOf(" + node.getClass().getName() + ")", node);
@@ -66,8 +75,14 @@ public class StringExpressionEvaluator {
 	}
 
 	private IAbstractString evalVariable(Variable node) {
-		//TODO: Check whether the type binding of the node is a String object
-		return evalVarBefore((IVariableBinding)node.resolveVariableBinding(), node);
+		//if binding is null it means the node is not available in the AST
+		IVariableBinding var = node.resolveVariableBinding();
+		if(var == null)
+		{
+			throw new UnsupportedStringOpEx("internal error: Can't find definition for '" + ASTUtil.getVariableName(node) + "'", null);
+		}
+		
+		return evalVarBefore(var, node);
 	}
 
 	/**
@@ -121,6 +136,21 @@ public class StringExpressionEvaluator {
 		else
 		{
 			throw new UnsupportedStringOpExAtNode("Unknown assignment operator: " + usage.getOperator(), usage.getAssignmentOrDeclaration());
+		}
+	}
+	
+	private IAbstractString evalInfix(InfixExpression expr)
+	{
+		if(expr.getOperator() == InfixExpression.OP_CONCAT)
+		{
+			List<IAbstractString> ops = new ArrayList<IAbstractString>();
+			ops.add(eval(expr.getLeft()));
+			ops.add(eval(expr.getRight()));
+			return new StringSequence(ASTUtil.getPosition(expr), ops);
+		}
+		else
+		{
+			throw new UnsupportedStringOpExAtNode("getValOf( infix op = " + expr.getOperator() + ")", expr);
 		}
 	}
 	
