@@ -6,9 +6,11 @@ import org.eclipse.alvor.php.util.UnsupportedStringOpExAtNode;
 import org.eclipse.php.internal.core.ast.nodes.ASTNode;
 import org.eclipse.php.internal.core.ast.nodes.Assignment;
 import org.eclipse.php.internal.core.ast.nodes.Block;
+import org.eclipse.php.internal.core.ast.nodes.ConditionalExpression;
 import org.eclipse.php.internal.core.ast.nodes.ExpressionStatement;
 import org.eclipse.php.internal.core.ast.nodes.FunctionInvocation;
 import org.eclipse.php.internal.core.ast.nodes.IVariableBinding;
+import org.eclipse.php.internal.core.ast.nodes.IfStatement;
 import org.eclipse.php.internal.core.ast.nodes.InfixExpression;
 import org.eclipse.php.internal.core.ast.nodes.Statement;
 import org.eclipse.php.internal.core.ast.nodes.Variable;
@@ -46,6 +48,20 @@ public class VariableTracker {
 			return precedingUsage;
 		}
 	}
+	
+	/**
+	 * Helper method to search for variable modification in the next scope
+	 * @param var
+	 * @param scope
+	 * @return
+	 */
+	public static NameUsage getLastModIn(IVariableBinding var, ASTNode scope) {
+		if (var != null && var.isField()) {
+			return getFieldDefinition(var);
+			//TODO: handle the field parameters
+		}
+		return getLastReachingModIn(var, null, scope);
+	}
 
 	/**
 	 * Find previous modification of target node with the given binding inside the scope
@@ -79,10 +95,17 @@ public class VariableTracker {
 		{
 			return getLastReachingModInInfix(var, target, (InfixExpression)scope);
 		}
+		//we've reached an empty variable declaration, carry on
 		else if(scope instanceof Variable)
 		{
-			//we've reached an empty variable declaration, carry on
 			return null;
+		}
+		else if (scope instanceof IfStatement)
+		{
+			return getLastReachingModInIf(var, target, (IfStatement)scope);
+		}
+		else if (scope instanceof ConditionalExpression) {
+			return getLastReachingModInCondExpr(var, target, (ConditionalExpression)scope);
 		}
 		else
 		{
@@ -91,17 +114,60 @@ public class VariableTracker {
 	}
 	
 	/**
-	 * Helper method to search for variable modification in the next scope
+	 * Evaluate the value in a conditional expression, i.e Expression ? Expression : Expression
 	 * @param var
-	 * @param scope
+	 * @param target
+	 * @param condExpr
 	 * @return
 	 */
-	public static NameUsage getLastModIn(IVariableBinding var, ASTNode scope) {
-		if (var != null && var.isField()) {
-			return getFieldDefinition(var);
-			//TODO: handle the field parameters
+	private static NameUsage getLastReachingModInCondExpr(IVariableBinding var,
+			ASTNode target, ConditionalExpression condExpr) {
+		if (target == null) {
+			NameUsage thenUsage = getLastModIn(var, condExpr.getIfTrue());
+			NameUsage elseUsage = null;
+			if (condExpr.getIfFalse() != null) {
+				elseUsage = getLastModIn(var, condExpr.getIfFalse());
+			}
+			
+			if (thenUsage == null && elseUsage == null) {
+				return null;
+			}
+			
+			return new NameUsageChoice(condExpr, thenUsage, elseUsage);
 		}
-		return getLastReachingModIn(var, null, scope);
+		else {
+			return null;
+		}
+	}
+
+	/**
+	 * Evaluate the if-statement
+	 * @param var
+	 * @param target
+	 * @param ifStmt
+	 * @return
+	 */
+	private static NameUsage getLastReachingModInIf(IVariableBinding var,
+			ASTNode target, IfStatement ifStmt) {
+		if (target == null) {
+			NameUsage thenUsage = getLastModIn(var, ifStmt.getTrueStatement());
+			NameUsage elseUsage = null;
+			if(ifStmt.getFalseStatement() != null)
+			{
+				elseUsage = getLastModIn(var, ifStmt.getFalseStatement());
+			}
+			
+			if(thenUsage == null && elseUsage == null)
+			{
+				return null;
+			}
+			
+			return new NameUsageChoice(ifStmt, thenUsage, elseUsage);
+		}
+		else
+		{
+			return null;
+		}
 	}
 	
 	/**
@@ -217,9 +283,6 @@ public class VariableTracker {
 				return usage;
 			}
 		}
-		return null;
-		
+		return null;	
 	}
-	
-
 }

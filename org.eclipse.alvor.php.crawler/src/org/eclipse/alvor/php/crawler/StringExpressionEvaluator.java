@@ -5,23 +5,25 @@ import java.util.List;
 
 import org.eclipse.alvor.php.tracker.NameAssignment;
 import org.eclipse.alvor.php.tracker.NameUsage;
+import org.eclipse.alvor.php.tracker.NameUsageChoice;
 import org.eclipse.alvor.php.tracker.VariableTracker;
 import org.eclipse.alvor.php.util.ASTUtil;
 import org.eclipse.alvor.php.util.UnsupportedStringOpExAtNode;
 import org.eclipse.php.internal.core.ast.nodes.ASTNode;
 import org.eclipse.php.internal.core.ast.nodes.Assignment;
+import org.eclipse.php.internal.core.ast.nodes.ConditionalExpression;
 import org.eclipse.php.internal.core.ast.nodes.Expression;
 import org.eclipse.php.internal.core.ast.nodes.IVariableBinding;
 import org.eclipse.php.internal.core.ast.nodes.InfixExpression;
 import org.eclipse.php.internal.core.ast.nodes.Scalar;
 import org.eclipse.php.internal.core.ast.nodes.Variable;
-import org.eclipse.php.internal.core.ast.nodes.VariableBinding;
-
 import com.googlecode.alvor.common.HotspotDescriptor;
 import com.googlecode.alvor.common.StringHotspotDescriptor;
 import com.googlecode.alvor.common.UnsupportedHotspotDescriptor;
 import com.googlecode.alvor.common.UnsupportedStringOpEx;
 import com.googlecode.alvor.string.IAbstractString;
+import com.googlecode.alvor.string.IPosition;
+import com.googlecode.alvor.string.StringChoice;
 import com.googlecode.alvor.string.StringConstant;
 import com.googlecode.alvor.string.StringSequence;
 
@@ -68,6 +70,11 @@ public class StringExpressionEvaluator {
 		{
 			return evalInfix((InfixExpression)node);
 		}
+		else if (node instanceof ConditionalExpression) {
+			return new StringChoice(ASTUtil.getPosition(node),
+					eval(((ConditionalExpression)node).getIfTrue()),
+					eval(((ConditionalExpression)node).getIfFalse()));
+		}
 		else
 		{
 			throw new UnsupportedStringOpExAtNode("getValOf(" + node.getClass().getName() + ")", node);
@@ -111,13 +118,16 @@ public class StringExpressionEvaluator {
 		{
 			return evalVarAfterAssignment(var, (NameAssignment)usage);
 		}
+		if (usage instanceof NameUsageChoice) {
+			return evalVarAfterUsageChoice(var, (NameUsageChoice)usage);
+		}
 		else {
 			throw new IllegalArgumentException();
 		}
 	}
 	
 	/**
-	 * Determine whether we assign or concatenate and assign
+	 * Determine whether we assign or concatenate and then assign
 	 * @param var
 	 * @param usage
 	 * @return
@@ -137,6 +147,39 @@ public class StringExpressionEvaluator {
 		{
 			throw new UnsupportedStringOpExAtNode("Unknown assignment operator: " + usage.getOperator(), usage.getAssignmentOrDeclaration());
 		}
+	}
+	
+	/**
+	 * Evaluate the variable after an if-else clause
+	 * @param var
+	 * @param uc
+	 * @return
+	 */
+	private IAbstractString evalVarAfterUsageChoice(IVariableBinding var, NameUsageChoice uc)
+	{
+		IAbstractString thenStr;
+		if (uc.getThenUsage() == null) {
+			thenStr = this.evalVarBefore(var, uc.getCommonParentNode()); // eval before if statement
+		}
+		else {
+			 thenStr = this.evalVarAfter(var, uc.getThenUsage());
+		}
+		
+		IAbstractString elseStr;
+		if (uc.getElseUsage() == null) {
+			elseStr = this.evalVarBefore(var, uc.getCommonParentNode()); // eval before if statement
+		}
+		else {
+			elseStr = this.evalVarAfter(var, uc.getElseUsage());
+		}
+		
+		IPosition pos = null;
+		if (uc.getCommonParentNode() != null) {
+			pos = ASTUtil.getPosition(uc.getCommonParentNode());
+		}
+		return new StringChoice(pos, thenStr, elseStr);
+		
+		//TODO: optimizeChoice?
 	}
 	
 	private IAbstractString evalInfix(InfixExpression expr)
