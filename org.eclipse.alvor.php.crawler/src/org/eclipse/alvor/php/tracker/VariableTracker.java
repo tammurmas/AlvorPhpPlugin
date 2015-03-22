@@ -4,6 +4,7 @@ package org.eclipse.alvor.php.tracker;
 import org.eclipse.alvor.php.util.ASTUtil;
 import org.eclipse.alvor.php.util.UnsupportedStringOpExAtNode;
 import org.eclipse.php.internal.core.ast.nodes.ASTNode;
+import org.eclipse.php.internal.core.ast.nodes.ArrayAccess;
 import org.eclipse.php.internal.core.ast.nodes.Assignment;
 import org.eclipse.php.internal.core.ast.nodes.Block;
 import org.eclipse.php.internal.core.ast.nodes.ConditionalExpression;
@@ -12,6 +13,8 @@ import org.eclipse.php.internal.core.ast.nodes.FunctionInvocation;
 import org.eclipse.php.internal.core.ast.nodes.IVariableBinding;
 import org.eclipse.php.internal.core.ast.nodes.IfStatement;
 import org.eclipse.php.internal.core.ast.nodes.InfixExpression;
+import org.eclipse.php.internal.core.ast.nodes.ParenthesisExpression;
+import org.eclipse.php.internal.core.ast.nodes.PostfixExpression;
 import org.eclipse.php.internal.core.ast.nodes.Statement;
 import org.eclipse.php.internal.core.ast.nodes.Variable;
 
@@ -21,7 +24,7 @@ import com.googlecode.alvor.string.IPosition;
 
 @SuppressWarnings("restriction")
 /**
- * Follows the alternation of the db-query parameter upward starting from the db-query call
+ * Follows the alternation of the db-query parameter upward the AST
  * @author Urmas
  *
  */
@@ -29,8 +32,6 @@ public class VariableTracker {
 
 	public static NameUsage getLastReachingMod(IVariableBinding var, ASTNode target) {
 		assert target != null;
-		/*if(var == null)
-			throw new UnsupportedStringOpExAtNode("getLastReachingModIn " + target.getClass(), target);*/
 			
 		if (var != null && var.isField()) {
 			return getFieldDefinition(var);
@@ -42,8 +43,8 @@ public class VariableTracker {
 		if (usage != null) {
 			return usage;
 		}
+		// nothing found inside parent, so search in things preceding the parent
 		else {
-			// nothing found inside parent, so search in things preceding the parent
 			NameUsage precedingUsage = getLastReachingMod(var, parent);
 			return precedingUsage;
 		}
@@ -87,13 +88,16 @@ public class VariableTracker {
 			return getLastReachingModInBlock(var, target, (Block)scope);
 		}
 		else if (scope instanceof Assignment) {
-			//return getLastReachingModInVDeclStmt(var, target, (Assignment)scope);
 			return getLastReachingModInAss(var, target, (Assignment)scope);
 	    	
 	    }
 		else if(scope instanceof InfixExpression)
 		{
 			return getLastReachingModInInfix(var, target, (InfixExpression)scope);
+		}
+		//since info about the contents of array become available at runtime, we do not support it
+		else if (scope instanceof ArrayAccess) {
+			throw new UnsupportedStringOpExAtNode("getLastReachingModIn " + scope.getClass(), scope);
 		}
 		//we've reached an empty variable declaration, carry on
 		else if(scope instanceof Variable)
@@ -107,18 +111,63 @@ public class VariableTracker {
 		else if (scope instanceof ConditionalExpression) {
 			return getLastReachingModInCondExpr(var, target, (ConditionalExpression)scope);
 		}
+		else if (ASTUtil.isLoopStatement(scope)) {
+			return getLastReachingModInLoop(var, target, (Statement)scope);
+		}
+		else if (scope instanceof PostfixExpression) {
+			return getLastReachingModInPostfixExp(var, target, (PostfixExpression)scope);
+		}
+		else if (scope instanceof ParenthesisExpression) {
+			if (target == null) {
+				return getLastReachingModIn(var, null, 
+						((ParenthesisExpression)scope).getExpression());
+			}
+			else {
+				return null;
+			}
+		}
 		else
 		{
 			throw new UnsupportedStringOpExAtNode("getLastReachingModIn " + scope.getClass(), scope);
 		}
 	}
 	
+	private static NameUsage getLastReachingModInPostfixExp(
+			IVariableBinding var, ASTNode target, PostfixExpression postfix) {
+		// ++ or --
+		if (target == null) {
+			if (ASTUtil.sameBinding(postfix.getVariable(), var)) {
+				throw new UnsupportedStringOpExAtNode("Postfix operand", postfix);
+			}
+		}
+		return null;
+	}
+
+	
+	/**
+	 * Evaluate the value in a loop statement
+	 * For simplicity we consider the loop as an if-else statement without the "else"-branch
+	 * I.e loop statement occurs once or never
+	 */
+	private static NameUsage getLastReachingModInLoop(IVariableBinding var,
+			ASTNode target, Statement loop) {
+		if (target == null) {
+			NameUsage thenUsage = getLastModIn(var, ASTUtil.getLoopBody(loop));
+			NameUsage elseUsage = null;
+			
+			if (thenUsage == null && elseUsage == null) {
+				return null;
+			}
+			
+			return new NameUsageChoice(loop, thenUsage, elseUsage);
+		}
+		else {
+			return null;
+		}
+	}
+	
 	/**
 	 * Evaluate the value in a conditional expression, i.e Expression ? Expression : Expression
-	 * @param var
-	 * @param target
-	 * @param condExpr
-	 * @return
 	 */
 	private static NameUsage getLastReachingModInCondExpr(IVariableBinding var,
 			ASTNode target, ConditionalExpression condExpr) {
@@ -142,10 +191,6 @@ public class VariableTracker {
 
 	/**
 	 * Evaluate the if-statement
-	 * @param var
-	 * @param target
-	 * @param ifStmt
-	 * @return
 	 */
 	private static NameUsage getLastReachingModInIf(IVariableBinding var,
 			ASTNode target, IfStatement ifStmt) {
@@ -172,8 +217,6 @@ public class VariableTracker {
 	
 	/**
 	 * Check for a field definition
-	 * @param var
-	 * @return
 	 */
 	private static NameUsage getFieldDefinition(IVariableBinding var) {
 		// for now, (final)fields should be handled by client 
@@ -182,24 +225,15 @@ public class VariableTracker {
 	
 	/**
 	 * Get last modification of target node(with the given binding) inside the method invocation
-	 * @param var
-	 * @param target
-	 * @param inv
-	 * @return
 	 */
 	private static NameUsage getLastReachingModInInv(IVariableBinding var,
 			ASTNode target, FunctionInvocation inv) {
-		//TODO check in expression position
-		
+		//TODO
 		return null;
 	}
 	
 	/**
 	 * Get last modaification of target inside a block statement
-	 * @param var
-	 * @param target
-	 * @param block
-	 * @return
 	 */
 	private static NameUsage getLastReachingModInBlock(IVariableBinding var,
 			ASTNode target, Block block) {
@@ -229,10 +263,6 @@ public class VariableTracker {
 	
 	/**
 	 * Get last modification inside an assignment
-	 * @param var
-	 * @param target
-	 * @param ass
-	 * @return
 	 */
 	private static NameUsage getLastReachingModInAss(IVariableBinding var, 
 			ASTNode target, Assignment ass) {
@@ -246,10 +276,6 @@ public class VariableTracker {
 	
 	/**
 	 * Track variable modifications inside an infix expression, i.e concatenation of strings
-	 * @param var
-	 * @param target
-	 * @param inf
-	 * @return
 	 */
 	private static NameUsage getLastReachingModInInfix(IVariableBinding var,
 			ASTNode target, InfixExpression inf) {

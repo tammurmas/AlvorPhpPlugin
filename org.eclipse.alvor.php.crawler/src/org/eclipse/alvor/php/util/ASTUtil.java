@@ -4,10 +4,14 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.dltk.core.ISourceModule;
 import org.eclipse.dltk.core.ModelException;
 import org.eclipse.php.internal.core.ast.nodes.ASTNode;
+import org.eclipse.php.internal.core.ast.nodes.DoStatement;
 import org.eclipse.php.internal.core.ast.nodes.Expression;
+import org.eclipse.php.internal.core.ast.nodes.ForStatement;
 import org.eclipse.php.internal.core.ast.nodes.IBinding;
 import org.eclipse.php.internal.core.ast.nodes.Identifier;
+import org.eclipse.php.internal.core.ast.nodes.Statement;
 import org.eclipse.php.internal.core.ast.nodes.Variable;
+import org.eclipse.php.internal.core.ast.nodes.WhileStatement;
 
 import com.googlecode.alvor.common.PositionUtil;
 import com.googlecode.alvor.string.IPosition;
@@ -21,6 +25,7 @@ import com.googlecode.alvor.string.Position;
  *
  */
 public class ASTUtil {
+	
 	public static IPosition getPosition(ASTNode node)
 	{
 		return new Position(ASTUtil.getFileString(node), node.getStart(), node.getLength());
@@ -49,9 +54,6 @@ public class ASTUtil {
 	
 	/**
 	 * Check the bindings of an Expression object and a Variable binding 
-	 * @param exp
-	 * @param var
-	 * @return
 	 */
 	public static boolean sameBinding(Expression exp, IBinding var) {
 		if(exp instanceof Variable)
@@ -63,6 +65,27 @@ public class ASTUtil {
 		else
 		{
 			return false;
+		}
+	}
+	
+	public static boolean isLoopStatement(ASTNode node) {
+		return node instanceof WhileStatement
+			|| node instanceof ForStatement
+			|| node instanceof DoStatement; 
+	}
+	
+	public static Statement getLoopBody(ASTNode loop) {
+		if (loop instanceof ForStatement) {
+			return ((ForStatement)loop).getBody();
+		}
+		else if (loop instanceof WhileStatement) {
+			return ((WhileStatement)loop).getBody();
+		}
+		else if (loop instanceof DoStatement) {
+			return ((DoStatement)loop).getBody();
+		}
+		else {
+			throw new IllegalArgumentException();
 		}
 	}
 }

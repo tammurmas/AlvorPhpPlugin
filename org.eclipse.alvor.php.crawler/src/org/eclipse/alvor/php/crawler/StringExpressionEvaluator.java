@@ -10,13 +10,16 @@ import org.eclipse.alvor.php.tracker.VariableTracker;
 import org.eclipse.alvor.php.util.ASTUtil;
 import org.eclipse.alvor.php.util.UnsupportedStringOpExAtNode;
 import org.eclipse.php.internal.core.ast.nodes.ASTNode;
+import org.eclipse.php.internal.core.ast.nodes.ArrayAccess;
 import org.eclipse.php.internal.core.ast.nodes.Assignment;
 import org.eclipse.php.internal.core.ast.nodes.ConditionalExpression;
 import org.eclipse.php.internal.core.ast.nodes.Expression;
 import org.eclipse.php.internal.core.ast.nodes.IVariableBinding;
 import org.eclipse.php.internal.core.ast.nodes.InfixExpression;
+import org.eclipse.php.internal.core.ast.nodes.ParenthesisExpression;
 import org.eclipse.php.internal.core.ast.nodes.Scalar;
 import org.eclipse.php.internal.core.ast.nodes.Variable;
+
 import com.googlecode.alvor.common.HotspotDescriptor;
 import com.googlecode.alvor.common.StringHotspotDescriptor;
 import com.googlecode.alvor.common.UnsupportedHotspotDescriptor;
@@ -62,6 +65,11 @@ public class StringExpressionEvaluator {
 		{
 			return new StringConstant(ASTUtil.getPosition(node), ((Scalar)node).getStringValue(), null);
 		}
+		else if (node instanceof ArrayAccess)
+		{
+			//NOTE: some-why an array access gets evaluated to variable, so we have to check it beforehand
+			throw new UnsupportedStringOpExAtNode("getValOf(" + node.getClass().getName() + ")", node);
+		}
 		else if (node instanceof Variable)
 		{
 			return evalVariable((Variable)node);
@@ -74,6 +82,9 @@ public class StringExpressionEvaluator {
 			return new StringChoice(ASTUtil.getPosition(node),
 					eval(((ConditionalExpression)node).getIfTrue()),
 					eval(((ConditionalExpression)node).getIfFalse()));
+		}
+		else if (node instanceof ParenthesisExpression) {
+			return eval(((ParenthesisExpression)node).getExpression());
 		}
 		else
 		{
