@@ -6,14 +6,12 @@ import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.dltk.core.ISourceModule;
-import org.eclipse.php.internal.core.ast.nodes.ASTParser;
 import org.eclipse.alvor.php.EditorUtility;
 import org.eclipse.alvor.php.AlvorPhpPlugin;
 import org.eclipse.alvor.php.crawler.StringCollector;
 
 import com.googlecode.alvor.common.HotspotDescriptor;
 
-@SuppressWarnings("restriction")
 public class InvocationHandler extends AbstractHandler {
 
 	private final String funcName = AlvorPhpPlugin.getDefault()
@@ -27,10 +25,9 @@ public class InvocationHandler extends AbstractHandler {
 		System.out.println(".....Handler invocation...........");
 		
 		try {
-			StringCollector collector = new StringCollector(funcName, ASTParser
-					.newParser(sourceModule).createAST(null));
+			StringCollector collector = new StringCollector(funcName);
 
-			collector.performSearch();
+			collector.searchSource(sourceModule);
 			Collection<HotspotDescriptor> hotspots = collector.getHotspots();
 
 			for (HotspotDescriptor hotspot : hotspots) {
