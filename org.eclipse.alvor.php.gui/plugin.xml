@@ -2,24 +2,24 @@
 <?eclipse version="3.4"?>
 <plugin>
 
-<!-- test to call Alvor on PHP projects !-->
-	
 	<extension
          point="org.eclipse.core.expressions.propertyTesters">
       <propertyTester
             class="org.eclipse.alvor.php.gui.AlvorPHPPropertyTester"
             id="org.eclipse.alvor.php.gui.AlvorPHPPropertyTester"
             namespace="org.eclipse.alvor.php.gui"
-            properties="isPHPProject"
+            properties="isPHPProject,isPHPFile"
             type="java.lang.Object">
       </propertyTester>
    </extension>
+	
+	<!-- call Alvor on PHP projects !-->
 	
 	<extension point="org.eclipse.ui.menus">
 	 <menuContribution
             locationURI="popup:org.eclipse.php.ui.explorer?after=additions">
 	 	<command
-	         commandId="org.eclipse.myphp.command.projectInvocation"
+	         commandId="org.eclipse.alvor.php.command.projectInvocation"
 	         icon="icons/nuke.gif"
 	         label="Alvor PHP SQL checker"
 	         style="push">
@@ -36,17 +36,57 @@
 	<extension point="org.eclipse.ui.commands">
  		<command name="Project Invocation"
 			description="Crawls a given project for hotspots"
- 			id="org.eclipse.myphp.command.projectInvocation"/>
+ 			id="org.eclipse.alvor.php.command.projectInvocation"/>
 	</extension>
 	
 	<extension point="org.eclipse.ui.handlers">
 		<handler 
-			class= "org.eclipse.alvor.php.handlers.ProjectInvocationHandler"
-	 		commandId="org.eclipse.myphp.command.projectInvocation">
+			class= "org.eclipse.alvor.php.handlers.ProjectCrawlerHandler"
+	 		commandId="org.eclipse.alvor.php.command.projectInvocation">
 	 		<enabledWhen>
 	            <test
 	            	forcePluginActivation="true"
 		            property="org.eclipse.alvor.php.gui.isPHPProject">
+	            </test>
+         	</enabledWhen>
+            
+	 	</handler>
+	</extension>
+	
+	<!-- call Alvor on PHP files !-->
+	
+	<extension point="org.eclipse.ui.menus">
+	 <menuContribution
+            locationURI="popup:org.eclipse.php.ui.explorer?after=additions">
+	 	<command
+	         commandId="org.eclipse.alvor.php.command.fileInvocation"
+	         icon="icons/nuke.gif"
+	         label="Alvor PHP SQL checker (file)"
+	         style="push">
+	         <visibleWhen>
+		         <test
+		               forcePluginActivation="true"
+		               property="org.eclipse.alvor.php.gui.isPHPFile">
+		         </test>
+		      </visibleWhen>
+	 	</command>
+	 </menuContribution>
+	</extension>
+	
+	<extension point="org.eclipse.ui.commands">
+ 		<command name="File Invocation"
+			description="Crawls a given file for hotspots"
+ 			id="org.eclipse.alvor.php.command.fileInvocation"/>
+	</extension>
+	
+	<extension point="org.eclipse.ui.handlers">
+		<handler 
+			class= "org.eclipse.alvor.php.handlers.FileCrawlerHandler"
+	 		commandId="org.eclipse.alvor.php.command.fileInvocation">
+	 		<enabledWhen>
+	            <test
+	            	forcePluginActivation="true"
+		            property="org.eclipse.alvor.php.gui.isPHPFile">
 	            </test>
          	</enabledWhen>
             
