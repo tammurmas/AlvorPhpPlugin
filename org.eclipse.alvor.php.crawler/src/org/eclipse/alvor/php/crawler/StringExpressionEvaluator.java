@@ -90,6 +90,9 @@ public class StringExpressionEvaluator {
 		{
 			throw new UnsupportedStringOpExAtNode("getValOf(" + node.getClass().getName() + ")", node);
 		}
+		//TODO: ClassInstanceCreation
+		//TODO: MethodInvocation
+		//TODO: CastExpression
 	}
 
 	private IAbstractString evalVariable(Variable node) {

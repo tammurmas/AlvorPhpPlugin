@@ -7,15 +7,23 @@ import org.eclipse.php.internal.core.ast.nodes.ASTNode;
 import org.eclipse.php.internal.core.ast.nodes.ArrayAccess;
 import org.eclipse.php.internal.core.ast.nodes.Assignment;
 import org.eclipse.php.internal.core.ast.nodes.Block;
+import org.eclipse.php.internal.core.ast.nodes.BreakStatement;
 import org.eclipse.php.internal.core.ast.nodes.ConditionalExpression;
+import org.eclipse.php.internal.core.ast.nodes.EchoStatement;
+import org.eclipse.php.internal.core.ast.nodes.EmptyStatement;
 import org.eclipse.php.internal.core.ast.nodes.ExpressionStatement;
+import org.eclipse.php.internal.core.ast.nodes.FunctionDeclaration;
 import org.eclipse.php.internal.core.ast.nodes.FunctionInvocation;
 import org.eclipse.php.internal.core.ast.nodes.IVariableBinding;
 import org.eclipse.php.internal.core.ast.nodes.IfStatement;
 import org.eclipse.php.internal.core.ast.nodes.InfixExpression;
 import org.eclipse.php.internal.core.ast.nodes.ParenthesisExpression;
 import org.eclipse.php.internal.core.ast.nodes.PostfixExpression;
+import org.eclipse.php.internal.core.ast.nodes.PrefixExpression;
+import org.eclipse.php.internal.core.ast.nodes.Program;
 import org.eclipse.php.internal.core.ast.nodes.Statement;
+import org.eclipse.php.internal.core.ast.nodes.SwitchCase;
+import org.eclipse.php.internal.core.ast.nodes.SwitchStatement;
 import org.eclipse.php.internal.core.ast.nodes.Variable;
 
 import com.googlecode.alvor.common.UnsupportedStringOpEx;
@@ -38,6 +46,13 @@ public class VariableTracker {
 		}
 		
 		ASTNode parent = target.getParent();
+		
+		//we have reached the root of the program or the declaring function, return whatever NameUsage we have gathered so far
+		if(parent == null || parent instanceof FunctionDeclaration)
+		{
+			return null;
+		}
+		
 		NameUsage usage = getLastReachingModIn(var, target, parent);
 		
 		if (usage != null) {
@@ -87,20 +102,22 @@ public class VariableTracker {
 		else if (scope instanceof Block) {
 			return getLastReachingModInBlock(var, target, (Block)scope);
 		}
+		else if (scope instanceof Program) {
+			return getLastReachingModInProgram(var, target, (Program)scope);
+		}
 		else if (scope instanceof Assignment) {
 			return getLastReachingModInAss(var, target, (Assignment)scope);
-	    	
 	    }
-		else if(scope instanceof InfixExpression)
-		{
-			return getLastReachingModInInfix(var, target, (InfixExpression)scope);
-		}
 		//since info about the contents of array become available at runtime, we do not support it
 		else if (scope instanceof ArrayAccess) {
 			throw new UnsupportedStringOpExAtNode("getLastReachingModIn " + scope.getClass(), scope);
 		}
-		//we've reached an empty variable declaration, carry on
+		//we've reached an empty variable declaration, ignore it and carry on
 		else if(scope instanceof Variable)
+		{
+			return null;
+		}
+		else if (scope instanceof EchoStatement)
 		{
 			return null;
 		}
@@ -114,8 +131,20 @@ public class VariableTracker {
 		else if (ASTUtil.isLoopStatement(scope)) {
 			return getLastReachingModInLoop(var, target, (Statement)scope);
 		}
+		else if(scope instanceof InfixExpression)
+		{
+			return getLastReachingModInInfix(var, target, (InfixExpression)scope);
+		}
 		else if (scope instanceof PostfixExpression) {
 			return getLastReachingModInPostfixExp(var, target, (PostfixExpression)scope);
+		}
+		else if(scope instanceof PrefixExpression)
+		{
+			return getLastReachingModInPrefixExp(var, target, (PrefixExpression)scope);
+		}
+		else if (scope instanceof BreakStatement)
+		{
+			return null;
 		}
 		else if (scope instanceof ParenthesisExpression) {
 			if (target == null) {
@@ -126,6 +155,25 @@ public class VariableTracker {
 				return null;
 			}
 		}
+		else if(scope instanceof EmptyStatement)
+		{
+			return null;
+		}
+		else if(scope instanceof SwitchStatement)
+		{
+			return getLastReachingModInSwitch(var, target, ((SwitchStatement)scope).getBody());
+		}
+		else if(scope instanceof SwitchCase)
+		{
+			return getLastReachingModInSwitchCase(var, target, (SwitchCase)scope);
+		}
+		//TODO: ClassInstanceCreation
+		//TODO: MethodDeclaration
+		//TODO: CastExpression
+		//TODO: ReturnStatement
+		//TODO: CatchClause
+		//TODO: ThrowStatement
+		//TODO: TryStatement
 		else
 		{
 			throw new UnsupportedStringOpExAtNode("getLastReachingModIn " + scope.getClass(), scope);
@@ -138,6 +186,17 @@ public class VariableTracker {
 		if (target == null) {
 			if (ASTUtil.sameBinding(postfix.getVariable(), var)) {
 				throw new UnsupportedStringOpExAtNode("Postfix operand", postfix);
+			}
+		}
+		return null;
+	}
+	
+	private static NameUsage getLastReachingModInPrefixExp(
+			IVariableBinding var, ASTNode target, PrefixExpression scope) {
+		// !, ~, +, -, ++, --
+		if (target == null) {
+			if (ASTUtil.sameBinding(scope.getVariable(), var)) {
+				throw new UnsupportedStringOpExAtNode("Prefix operand", scope);
 			}
 		}
 		return null;
@@ -233,6 +292,36 @@ public class VariableTracker {
 	}
 	
 	/**
+	 * Get last modaification of target inside a program
+	 * I.e we are dealing with the simplest PHP-script, not Object oriented
+	 */
+	private static NameUsage getLastReachingModInProgram(IVariableBinding var,
+			ASTNode target, Program block) {
+		int stmtIdx; // last statement that can affect target
+		
+		if (target == null) { // search whole block
+			stmtIdx = block.statements().size()-1;
+		}
+		else { 
+			// should be called only when block really is target's direct parent
+			stmtIdx = block.statements().indexOf(target)-1;
+		}
+		
+		// go backwards in statements
+		for (int i = stmtIdx; i >= 0; i--) {
+			Statement stmt = (Statement)block.statements().get(i);
+			
+			NameUsage usage = getLastModIn(var, stmt);
+			if (usage != null) {
+				return usage;
+			}
+		}
+		
+		// no (preceding) statement modifies var, e.g. this block doesn't affect target
+		return null;
+	}
+	
+	/**
 	 * Get last modaification of target inside a block statement
 	 */
 	private static NameUsage getLastReachingModInBlock(IVariableBinding var,
@@ -310,5 +399,85 @@ public class VariableTracker {
 			}
 		}
 		return null;	
+	}
+	
+	/**
+	 * Get the last reaching mod inside the switch statement
+	 */
+	private static NameUsage getLastReachingModInSwitch(IVariableBinding var,
+			ASTNode target, Block scope) {
+		if (target == null) {
+			NameUsage totalUsage = null;
+			
+			for (int i=0; i < scope.statements().size(); i++) {
+				SwitchCase switchCase = (SwitchCase)scope.statements().get(i);
+				
+				NameUsage usage = getLastReachingModIn(var, null, switchCase); // search in that statement
+				
+				if (usage != null) {
+					if (totalUsage == null) {
+						totalUsage = usage;
+					}
+					else {
+						totalUsage = new NameUsageChoice(null, totalUsage, usage);
+					}
+				}
+			}
+			return totalUsage;
+		} else {
+			assert target == scope;
+			return null;
+		}
+	}
+	
+	/**
+	 * Get the last mod inside a specific case of a switch statement
+	 */
+	private static NameUsage getLastReachingModInSwitchCase(IVariableBinding var,
+			ASTNode target, SwitchCase scope)
+	{
+		if(target == null)
+		{
+			NameUsage usage = null;
+			for(int i=0; i<scope.actions().size(); i++)
+			{
+				Statement stmt = scope.actions().get(i);
+				
+				Statement nextStmt = null;
+				if (i+1 < scope.actions().size()) {
+					nextStmt = (Statement)scope.actions().get(i+1);
+				}
+				if (nextStmt == null || nextStmt instanceof BreakStatement) {
+					usage = getLastReachingModIn(var, null, stmt); // search in that statement
+					if (usage == null) {
+						usage = getLastReachingModInSwitchCase(var, stmt, scope); // search before that 
+					}
+				}
+			}
+			return usage;
+		}
+		else
+		{
+			assert target.getParent() == scope;
+			
+			int i = scope.actions().indexOf(target);
+			
+			assert i > -1;
+			
+			if (i == 0) {
+				return null;
+			}
+			
+			Statement prev = (Statement)scope.actions().get(i-1);
+			
+			NameUsage usage = getLastReachingModIn(var, null, prev);
+			if (usage == null) {
+				return getLastReachingModInSwitchCase(var, prev, scope);
+			}
+			else {
+				return usage;
+			}
+		}
+		
 	}
 }
