@@ -1,6 +1,8 @@
 package org.eclipse.alvor.php.tracker;
 
 
+import java.util.List;
+
 import org.eclipse.alvor.php.util.ASTUtil;
 import org.eclipse.alvor.php.util.UnsupportedStringOpExAtNode;
 import org.eclipse.php.internal.core.ast.nodes.ASTNode;
@@ -11,7 +13,9 @@ import org.eclipse.php.internal.core.ast.nodes.BreakStatement;
 import org.eclipse.php.internal.core.ast.nodes.ConditionalExpression;
 import org.eclipse.php.internal.core.ast.nodes.EchoStatement;
 import org.eclipse.php.internal.core.ast.nodes.EmptyStatement;
+import org.eclipse.php.internal.core.ast.nodes.Expression;
 import org.eclipse.php.internal.core.ast.nodes.ExpressionStatement;
+import org.eclipse.php.internal.core.ast.nodes.FormalParameter;
 import org.eclipse.php.internal.core.ast.nodes.FunctionDeclaration;
 import org.eclipse.php.internal.core.ast.nodes.FunctionInvocation;
 import org.eclipse.php.internal.core.ast.nodes.IVariableBinding;
@@ -47,9 +51,33 @@ public class VariableTracker {
 		
 		ASTNode parent = target.getParent();
 		
-		//we have reached the root of the program or the declaring function, return whatever NameUsage we have gathered so far
-		if(parent == null || parent instanceof FunctionDeclaration)
+		//we have reached the root of the program
+		if(parent == null)
 		{
+			return null;
+		}
+		
+		//we have reached the declaring function
+		if(parent instanceof FunctionDeclaration)
+		{
+			FunctionDeclaration fdecl = (FunctionDeclaration)parent;
+			List<FormalParameter> params = fdecl.formalParameters();
+			
+			int i=0;
+			for(FormalParameter param : params)
+			{
+				Expression expr = param.getParameterName();
+				if(expr instanceof Variable)
+				{
+					Variable varParam = (Variable)expr;
+					if(varParam.resolveVariableBinding().equals(var))
+					{
+						return new NameInParameter(fdecl, i);
+					}
+				}
+				i++;
+			}
+			
 			return null;
 		}
 		
@@ -288,6 +316,7 @@ public class VariableTracker {
 	private static NameUsage getLastReachingModInInv(IVariableBinding var,
 			ASTNode target, FunctionInvocation inv) {
 		//TODO
+		//throw new UnsupportedStringOpExAtNode("Function invocation not supported: getLastReachingModIn " + inv.getClass(), inv);
 		return null;
 	}
 	

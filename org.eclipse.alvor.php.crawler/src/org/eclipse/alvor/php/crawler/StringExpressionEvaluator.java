@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.alvor.php.tracker.NameAssignment;
+import org.eclipse.alvor.php.tracker.NameInParameter;
 import org.eclipse.alvor.php.tracker.NameUsage;
 import org.eclipse.alvor.php.tracker.NameUsageChoice;
 import org.eclipse.alvor.php.tracker.VariableTracker;
@@ -28,6 +29,7 @@ import com.googlecode.alvor.string.IAbstractString;
 import com.googlecode.alvor.string.IPosition;
 import com.googlecode.alvor.string.StringChoice;
 import com.googlecode.alvor.string.StringConstant;
+import com.googlecode.alvor.string.StringParameter;
 import com.googlecode.alvor.string.StringSequence;
 
 @SuppressWarnings("restriction")
@@ -132,14 +134,25 @@ public class StringExpressionEvaluator {
 		{
 			return evalVarAfterAssignment(var, (NameAssignment)usage);
 		}
-		if (usage instanceof NameUsageChoice) {
+		else if (usage instanceof NameUsageChoice) {
 			return evalVarAfterUsageChoice(var, (NameUsageChoice)usage);
+		}
+		else if (usage instanceof NameInParameter)
+		{
+			return evalVarInParameter(var, (NameInParameter)usage);
 		}
 		else {
 			throw new IllegalArgumentException();
 		}
 	}
 	
+	private IAbstractString evalVarInParameter(IVariableBinding var,
+			NameInParameter usage) {
+		IPosition pos = ASTUtil.getPosition(usage.getParameterNode());
+		
+		return new StringParameter(pos, usage.getParameterNo());
+	}
+
 	/**
 	 * Determine whether we assign or concatenate and then assign
 	 * @param var
