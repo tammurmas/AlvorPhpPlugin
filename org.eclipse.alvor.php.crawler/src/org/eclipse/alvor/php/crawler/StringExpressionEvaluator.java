@@ -18,6 +18,7 @@ import org.eclipse.php.internal.core.ast.nodes.Expression;
 import org.eclipse.php.internal.core.ast.nodes.IVariableBinding;
 import org.eclipse.php.internal.core.ast.nodes.InfixExpression;
 import org.eclipse.php.internal.core.ast.nodes.ParenthesisExpression;
+import org.eclipse.php.internal.core.ast.nodes.Quote;
 import org.eclipse.php.internal.core.ast.nodes.Scalar;
 import org.eclipse.php.internal.core.ast.nodes.Variable;
 
@@ -88,6 +89,9 @@ public class StringExpressionEvaluator {
 		else if (node instanceof ParenthesisExpression) {
 			return eval(((ParenthesisExpression)node).getExpression());
 		}
+		else if (node instanceof Quote) {
+			return evalQuote((Quote)node);
+		}
 		else
 		{
 			throw new UnsupportedStringOpExAtNode("getValOf(" + node.getClass().getName() + ")", node);
@@ -137,20 +141,9 @@ public class StringExpressionEvaluator {
 		else if (usage instanceof NameUsageChoice) {
 			return evalVarAfterUsageChoice(var, (NameUsageChoice)usage);
 		}
-		else if (usage instanceof NameInParameter)
-		{
-			return evalVarInParameter(var, (NameInParameter)usage);
-		}
 		else {
 			throw new IllegalArgumentException();
 		}
-	}
-	
-	private IAbstractString evalVarInParameter(IVariableBinding var,
-			NameInParameter usage) {
-		IPosition pos = ASTUtil.getPosition(usage.getParameterNode());
-		
-		return new StringParameter(pos, usage.getParameterNo());
 	}
 
 	/**
@@ -207,6 +200,16 @@ public class StringExpressionEvaluator {
 		return new StringChoice(pos, thenStr, elseStr);
 		
 		//TODO: optimizeChoice?
+	}
+	
+	private IAbstractString evalQuote(Quote quote)
+	{
+		List<IAbstractString> ops = new ArrayList<IAbstractString>();
+		for(Expression expr: quote.expressions())
+		{
+			ops.add(eval(expr));
+		}
+		return new StringSequence(ASTUtil.getPosition(quote), ops);
 	}
 	
 	private IAbstractString evalInfix(InfixExpression expr)

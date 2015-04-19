@@ -25,6 +25,8 @@ import org.eclipse.php.internal.core.ast.nodes.ParenthesisExpression;
 import org.eclipse.php.internal.core.ast.nodes.PostfixExpression;
 import org.eclipse.php.internal.core.ast.nodes.PrefixExpression;
 import org.eclipse.php.internal.core.ast.nodes.Program;
+import org.eclipse.php.internal.core.ast.nodes.Quote;
+import org.eclipse.php.internal.core.ast.nodes.ReturnStatement;
 import org.eclipse.php.internal.core.ast.nodes.Statement;
 import org.eclipse.php.internal.core.ast.nodes.SwitchCase;
 import org.eclipse.php.internal.core.ast.nodes.SwitchStatement;
@@ -63,19 +65,19 @@ public class VariableTracker {
 			FunctionDeclaration fdecl = (FunctionDeclaration)parent;
 			List<FormalParameter> params = fdecl.formalParameters();
 			
-			int i=0;
 			for(FormalParameter param : params)
 			{
 				Expression expr = param.getParameterName();
 				if(expr instanceof Variable)
 				{
 					Variable varParam = (Variable)expr;
-					if(varParam.resolveVariableBinding().equals(var))
+					//if our query object is a function parameter, we stop here
+					if(ASTUtil.sameBinding(expr, var))
 					{
-						return new NameInParameter(fdecl, i);
+						//return new NameInParameter(fdecl, i);
+						throw new UnsupportedStringOpExAtNode("getLastReachingModIn " + parent.getClass(), parent);
 					}
 				}
-				i++;
 			}
 			
 			return null;
@@ -195,10 +197,20 @@ public class VariableTracker {
 		{
 			return getLastReachingModInSwitchCase(var, target, (SwitchCase)scope);
 		}
+		else if (scope instanceof Quote)
+		{
+			//just skip the quote and carry on with its expressions
+			return null;
+		}
+		else if (scope instanceof ReturnStatement)
+		{
+			//if we encounter the return statement for the first time
+			return null;
+		}
 		//TODO: ClassInstanceCreation
-		//TODO: MethodDeclaration
+		//TODO: MethodInvocation
 		//TODO: CastExpression
-		//TODO: ReturnStatement
+		
 		//TODO: CatchClause
 		//TODO: ThrowStatement
 		//TODO: TryStatement
