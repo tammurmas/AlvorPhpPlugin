@@ -3,6 +3,7 @@ package org.eclipse.alvor.php.crawler;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import org.eclipse.alvor.php.util.ASTUtil;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
@@ -13,11 +14,14 @@ import org.eclipse.php.internal.core.ast.nodes.ASTParser;
 import org.eclipse.php.internal.core.ast.nodes.Expression;
 import org.eclipse.php.internal.core.ast.nodes.FunctionInvocation;
 import org.eclipse.php.internal.core.ast.nodes.FunctionName;
+import org.eclipse.php.internal.core.ast.nodes.Identifier;
 import org.eclipse.php.internal.core.ast.nodes.NamespaceName;
 import org.eclipse.php.internal.core.ast.nodes.Program;
+import org.eclipse.php.internal.core.ast.nodes.Variable;
 import org.eclipse.php.internal.core.ast.visitor.AbstractVisitor;
 
 import com.googlecode.alvor.common.HotspotDescriptor;
+import com.googlecode.alvor.common.UnsupportedHotspotDescriptor;
 
 @SuppressWarnings("restriction")
 public class StringCollector {
@@ -26,17 +30,20 @@ public class StringCollector {
 	private Collection<HotspotDescriptor> hotspots = new ArrayList<HotspotDescriptor>();
 	
 	private String funcName;
+	private int paramIndex;
 	private IProject project;
 	
-	public StringCollector(String funcName, IProject project)
+	public StringCollector(String funcName, IProject project, int paramIndex)
 	{
 		this.funcName = funcName;
 		this.project = project;
+		this.paramIndex = paramIndex;
 	}
 	
-	public StringCollector(String funcName)
+	public StringCollector(String funcName, int paramIndex)
 	{
 		this.funcName = funcName;
+		this.paramIndex = paramIndex;
 	}
 	
 	public void searchProject() throws Exception
@@ -77,10 +84,21 @@ public class StringCollector {
 				
 				FunctionName functionName = functionInvocation.getFunctionName();
 				Expression expr = functionName.getName();
-
-				if (expr instanceof NamespaceName && ((NamespaceName) expr).getName().equals(funcName)) {
-					Expression arg = (Expression)(functionInvocation.parameters().get(0));//TODO: check if there are no parameters
-					hotspots.add(evaluator.evaluate(arg));
+				
+				String name = ASTUtil.getFunctionOrMethodName(expr);
+				
+				if (name != null && name.equals(funcName)) {
+					
+					if(functionInvocation.parameters().size() < paramIndex)
+					{
+						hotspots.add(new UnsupportedHotspotDescriptor(ASTUtil.getPosition(functionInvocation), "Wrong number of hotspot parameters!", ASTUtil.getPosition(functionInvocation)));
+					}
+					else
+					{
+						Expression arg = (Expression)(functionInvocation.parameters().get(paramIndex-1));
+						hotspots.add(evaluator.evaluate(arg));
+					}
+					
 				}
 				return true;
 			}
@@ -97,7 +115,7 @@ public class StringCollector {
 		if(resource instanceof IFile)
 		{
 			IFile file = (IFile)resource;
-			if(file.getFileExtension().equalsIgnoreCase("php"))
+			if(file.getFileExtension() != null && file.getFileExtension().equalsIgnoreCase("php"))
 			{
 				return true;
 			}

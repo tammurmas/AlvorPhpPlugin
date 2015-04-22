@@ -20,7 +20,10 @@ import org.eclipse.php.internal.core.ast.nodes.FunctionDeclaration;
 import org.eclipse.php.internal.core.ast.nodes.FunctionInvocation;
 import org.eclipse.php.internal.core.ast.nodes.IVariableBinding;
 import org.eclipse.php.internal.core.ast.nodes.IfStatement;
+import org.eclipse.php.internal.core.ast.nodes.InLineHtml;
+import org.eclipse.php.internal.core.ast.nodes.Include;
 import org.eclipse.php.internal.core.ast.nodes.InfixExpression;
+import org.eclipse.php.internal.core.ast.nodes.MethodInvocation;
 import org.eclipse.php.internal.core.ast.nodes.ParenthesisExpression;
 import org.eclipse.php.internal.core.ast.nodes.PostfixExpression;
 import org.eclipse.php.internal.core.ast.nodes.PrefixExpression;
@@ -118,7 +121,13 @@ public class VariableTracker {
 	 */
 	private static NameUsage getLastReachingModIn(IVariableBinding var, ASTNode target, ASTNode scope) {
 		if (scope instanceof FunctionInvocation) {
-			return getLastReachingModInInv(var, target, (FunctionInvocation)scope);
+			//TODO: support function invocations
+			return null;
+		}
+		else if (scope instanceof MethodInvocation)
+		{
+			//TODO: support method invocations
+			return null;
 		}
 		else if (scope instanceof ExpressionStatement) {
 			if (target == null) {
@@ -199,16 +208,27 @@ public class VariableTracker {
 		}
 		else if (scope instanceof Quote)
 		{
-			//just skip the quote and carry on with its expressions
+			//just skip the quote itself and carry on with its expressions
 			return null;
 		}
 		else if (scope instanceof ReturnStatement)
 		{
-			//if we encounter the return statement for the first time
+			//TODO: support return statements
 			return null;
 		}
+		else if(scope instanceof Include)
+		{
+			//TODO: support resource inclusions
+			return null;
+		}
+		else if(scope instanceof InLineHtml)
+		{
+			//skip html on the way
+			return null;
+		}
+		
 		//TODO: ClassInstanceCreation
-		//TODO: MethodInvocation
+		
 		//TODO: CastExpression
 		
 		//TODO: CatchClause
@@ -320,16 +340,6 @@ public class VariableTracker {
 	private static NameUsage getFieldDefinition(IVariableBinding var) {
 		// for now, (final)fields should be handled by client 
 		throw new UnsupportedStringOpEx("Fields are not supported in tracker", (IPosition)null);
-	}
-	
-	/**
-	 * Get last modification of target node(with the given binding) inside the method invocation
-	 */
-	private static NameUsage getLastReachingModInInv(IVariableBinding var,
-			ASTNode target, FunctionInvocation inv) {
-		//TODO
-		//throw new UnsupportedStringOpExAtNode("Function invocation not supported: getLastReachingModIn " + inv.getClass(), inv);
-		return null;
 	}
 	
 	/**

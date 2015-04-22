@@ -2,8 +2,8 @@ package org.eclipse.alvor.php.handlers;
 
 import java.util.Collection;
 
-import org.eclipse.alvor.php.AlvorPhpPlugin;
 import org.eclipse.alvor.php.crawler.StringCollector;
+import org.eclipse.alvor.php.gui.AlvorPhpPlugin;
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.resources.IProject;
@@ -17,15 +17,20 @@ import com.googlecode.alvor.common.HotspotDescriptor;
 
 public class ProjectCrawlerHandler extends AbstractHandler {
 	
-	private final String funcName = AlvorPhpPlugin.getDefault()
-			.getPreferenceStore().getString("function_name");
+	//private final 
+	
+	//private final int paramIndex = ;
 	
 	public Object execute(ExecutionEvent event) {
 		IProject project = getSelectedProject();
+		String funcName = AlvorPhpPlugin.getDefault().getPreferenceStore()
+				.getString("function_name");
+		int paramIndex = Integer.parseInt(AlvorPhpPlugin.getDefault()
+				.getPreferenceStore().getString("param_index"));
 		
 		System.out.println("..........Start of crawling for "+ project.getName() + " .....");
 
-		StringCollector collector = new StringCollector(funcName, project);
+		StringCollector collector = new StringCollector(funcName ,project, paramIndex);
 
 		try {
 			collector.searchProject();

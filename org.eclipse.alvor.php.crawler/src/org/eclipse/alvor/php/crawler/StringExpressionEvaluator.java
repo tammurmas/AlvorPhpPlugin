@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.alvor.php.tracker.NameAssignment;
-import org.eclipse.alvor.php.tracker.NameInParameter;
 import org.eclipse.alvor.php.tracker.NameUsage;
 import org.eclipse.alvor.php.tracker.NameUsageChoice;
 import org.eclipse.alvor.php.tracker.VariableTracker;
@@ -30,7 +29,6 @@ import com.googlecode.alvor.string.IAbstractString;
 import com.googlecode.alvor.string.IPosition;
 import com.googlecode.alvor.string.StringChoice;
 import com.googlecode.alvor.string.StringConstant;
-import com.googlecode.alvor.string.StringParameter;
 import com.googlecode.alvor.string.StringSequence;
 
 @SuppressWarnings("restriction")

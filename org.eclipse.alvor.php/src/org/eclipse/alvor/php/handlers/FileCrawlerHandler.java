@@ -2,8 +2,8 @@ package org.eclipse.alvor.php.handlers;
 
 import java.util.Collection;
 
-import org.eclipse.alvor.php.AlvorPhpPlugin;
 import org.eclipse.alvor.php.crawler.StringCollector;
+import org.eclipse.alvor.php.gui.AlvorPhpPlugin;
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
@@ -18,17 +18,19 @@ import com.googlecode.alvor.common.HotspotDescriptor;
 
 @SuppressWarnings("restriction")
 public class FileCrawlerHandler extends AbstractHandler {
-
-	private final String funcName = AlvorPhpPlugin.getDefault()
-			.getPreferenceStore().getString("function_name");
 	
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {
 		SourceModule source = getSelectedPHPFile();
+		String funcName = AlvorPhpPlugin.getDefault().getPreferenceStore()
+				.getString("function_name");
+		int paramIndex = Integer.parseInt(AlvorPhpPlugin.getDefault()
+				.getPreferenceStore().getString("param_index"));
+		
 		System.out.println("\n..........Start of crawling for "+ source.getFileName() + " .....");
 		
 		try {
-			StringCollector collector = new StringCollector(funcName);
+			StringCollector collector = new StringCollector(funcName, paramIndex);
 
 			collector.searchSource(source);
 			Collection<HotspotDescriptor> hotspots = collector.getHotspots();

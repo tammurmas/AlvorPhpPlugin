@@ -9,6 +9,7 @@ import org.eclipse.php.internal.core.ast.nodes.Expression;
 import org.eclipse.php.internal.core.ast.nodes.ForStatement;
 import org.eclipse.php.internal.core.ast.nodes.IBinding;
 import org.eclipse.php.internal.core.ast.nodes.Identifier;
+import org.eclipse.php.internal.core.ast.nodes.NamespaceName;
 import org.eclipse.php.internal.core.ast.nodes.Statement;
 import org.eclipse.php.internal.core.ast.nodes.Variable;
 import org.eclipse.php.internal.core.ast.nodes.WhileStatement;
@@ -88,4 +89,21 @@ public class ASTUtil {
 			throw new IllegalArgumentException();
 		}
 	}
+	
+	public static String getFunctionOrMethodName(Expression expr)
+	{
+		if (expr instanceof NamespaceName) {
+			return ((NamespaceName) expr).getName();
+		}
+		
+		if(expr instanceof Variable && ((Variable)expr).getName() instanceof Identifier)
+		{
+			Identifier id = (Identifier)((Variable)expr).getName();
+			return id.getName();
+				 
+		}
+		
+		return null;
+	}
+	
 }
